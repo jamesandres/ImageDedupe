@@ -22,7 +22,7 @@ class ImageHashProcess(multiprocessing.Process):
 
     def run(self):
         logger.debug("-> Running ImageHashProcess #%d on %d jobs" % (
-            self.id, len(self.jobs)))
+                     self.id, len(self.jobs)))
         logger.debug("   id(lock)       = %s" % id(self.lock))
         logger.debug("   id(dedupe_map) = %s" % id(self.dedupe_map))
         logger.debug("   id(jobs)       = %s" % id(self.jobs))
@@ -66,11 +66,21 @@ class ImageHashProcess(multiprocessing.Process):
 
         item = self.dedupe_map[hash]
 
+        # This verbose assignment code is necessary to inform the DictProxy to
+        # update itself.
+        # See: http://stackoverflow.com/a/10807976/806988
         if this_item['area'] > item['largest']['area']:
-            self.dedupe_map[hash]['dupes'].append(item['largest'])
-            self.dedupe_map[hash]['largest'] = this_item
+            new_item = {
+                'dupes': item['dupes'] + [item['largest']],
+                'largest': this_item,
+            }
         else:
-            self.dedupe_map[hash]['dupes'].append(this_item)
+            new_item = {
+                'dupes': item['dupes'] + [this_item],
+                'largest': item['largest'],
+            }
+
+        self.dedupe_map[hash] = new_item
 
 
 class ImageDedupe(object):
@@ -78,8 +88,8 @@ class ImageDedupe(object):
         super(ImageDedupe, self).__init__()
 
         self.num_workers = multiprocessing.cpu_count()
-        self.worker_manager = multiprocessing.Manager()
-        self.dedupe_map = self.worker_manager.dict()
+        self.manager = multiprocessing.Manager()
+        self.dedupe_map = self.manager.dict()
         self.workers = []
         self.lock = multiprocessing.Lock()
 
