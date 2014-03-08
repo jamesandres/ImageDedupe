@@ -1,0 +1,4 @@
+Pillow==2.3.0
+ipython==1.2.1
+readline==6.2.4.1
+wsgiref==0.1.2
